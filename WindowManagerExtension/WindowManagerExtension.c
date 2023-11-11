@@ -5,9 +5,11 @@ HHOOK mouseHook;
 HWND windowUnderCursor = NULL;
 POINT initialMousePos = { 0 };
 BOOL isDragging = FALSE;
+BOOL isResizing = FALSE;
 
+// todo bug i can reposition desktop. icons move
 void RepositionWindow() {
-   if (windowUnderCursor != NULL) {
+   if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
       POINT currentMousePos;
       GetCursorPos(&currentMousePos);
 
@@ -26,6 +28,26 @@ void RepositionWindow() {
    }
 }
 
+void ResizeWindow() {
+   if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
+      POINT currentMousePos;
+      GetCursorPos(&currentMousePos);
+
+      int deltaX = currentMousePos.x - initialMousePos.x;
+      int deltaY = currentMousePos.y - initialMousePos.y;
+
+      RECT windowRect;
+      GetWindowRect(windowUnderCursor, &windowRect);
+
+      int newWidth = windowRect.right - windowRect.left + deltaX;
+      int newHeight = windowRect.bottom - windowRect.top + deltaY;
+
+      SetWindowPos(windowUnderCursor, NULL, windowRect.left, windowRect.top, newWidth, newHeight, SWP_NOMOVE | SWP_NOZORDER);
+      initialMousePos = currentMousePos;
+   }
+}
+
+
 LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
    if (nCode >= 0) {
       MSLLHOOKSTRUCT* hookStruct = (MSLLHOOKSTRUCT*)lParam;
@@ -33,22 +55,32 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
       if (wParam == WM_LBUTTONDOWN) {
          windowUnderCursor = WindowFromPoint(hookStruct->pt);
          GetCursorPos(&initialMousePos);
-         //ScreenToClient(windowUnderCursor, &initialMousePos);
-         printf("Starting drag...\n");
          isDragging = TRUE;
+         printf("Starting drag...\n");
       } else if (wParam == WM_LBUTTONUP) {
          windowUnderCursor = NULL;
          isDragging = FALSE;
       } else if (wParam == WM_RBUTTONDOWN) {
-         if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
+         windowUnderCursor = WindowFromPoint(hookStruct->pt);
+         GetCursorPos(&initialMousePos);
+         isResizing = TRUE;
+         printf("Starting resize...\n");
+         /*if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
             printf("Ctrl + Right Click: Resizing Window\n");
-         }
+         }*/
+      } else if (wParam == WM_RBUTTONUP) {
+         windowUnderCursor = NULL;
+         isResizing = FALSE;
       }
 
       if (isDragging && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
          // Continuously reposition the window while dragging and Ctrl is pressed
          RepositionWindow();
          //printf("Repositioning window...\n");
+      }
+
+      if (isResizing && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+         ResizeWindow();
       }
    }
 
