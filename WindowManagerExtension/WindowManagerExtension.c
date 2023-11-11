@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <Windows.h>
+#include <tchar.h>
 
 HHOOK mouseHook;
 HWND windowUnderCursor = NULL;
@@ -7,9 +8,73 @@ POINT initialMousePos = { 0 };
 BOOL isDragging = FALSE;
 BOOL isResizing = FALSE;
 
+HWND GetDesktopListView() {
+   HWND hShellWnd = GetShellWindow();
+   if (hShellWnd == NULL) {
+      return NULL;
+   }
+
+   HWND hDefView = FindWindowEx(hShellWnd, NULL, L"SHELLDLL_DefView", NULL);
+   if (hDefView == NULL) {
+      return NULL;
+   }
+
+   HWND folderView = FindWindowEx(hDefView, NULL, L"SysListView32", NULL);
+   return folderView;
+}
+
+BOOL IsDesktopWindow(HWND hWnd) {
+   return hWnd == GetDesktopWindow();
+}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   const int classNameSize = 256;
+//   char className[classNameSize];
+//
+//   GetClassNameA(hWnd, className, classNameSize);
+//
+//   return (strcmp(className, "Progman") == 0 || strcmp(className, "WorkerW") == 0);
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   LONG_PTR style = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+//   return ((style & WS_EX_TOOLWINDOW) == 0);
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   LONG_PTR style = GetWindowLongPtr(hWnd, GWL_EXSTYLE);
+//   return ((style & WS_EX_LAYERED) == 0);
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   return hWnd == GetShellWindow();
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   HWND parent = GetParent(hWnd);
+//
+//   // If the window has no parent and is visible, it might be the desktop window
+//   if (parent == NULL && IsWindowVisible(hWnd)) {
+//      return TRUE;
+//   }
+//
+//   return FALSE;
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   HWND hShellWnd = GetShellWindow();
+//   HWND hDefView = FindWindowEx(hShellWnd, NULL, _T("SHELLDLL_DefView"), NULL);
+//   HWND folderView = FindWindowEx(hDefView, NULL, _T("SysListView32"), NULL);
+//   return hWnd == folderView;
+//}
+
+//BOOL IsDesktopWindow(HWND hWnd) {
+//   return hWnd == GetDesktopListView();
+//}
+
 // todo bug i can reposition desktop. icons move
 void RepositionWindow() {
-   if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
+   if (windowUnderCursor != NULL && !IsDesktopWindow(windowUnderCursor)) {
       POINT currentMousePos;
       GetCursorPos(&currentMousePos);
 
@@ -29,7 +94,7 @@ void RepositionWindow() {
 }
 
 void ResizeWindow() {
-   if (windowUnderCursor != NULL && windowUnderCursor != GetDesktopWindow()) {
+   if (windowUnderCursor != NULL && !IsDesktopWindow(windowUnderCursor)) {
       POINT currentMousePos;
       GetCursorPos(&currentMousePos);
 
@@ -73,14 +138,16 @@ LRESULT CALLBACK MouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
          isResizing = FALSE;
       }
 
-      if (isDragging && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-         // Continuously reposition the window while dragging and Ctrl is pressed
-         RepositionWindow();
-         //printf("Repositioning window...\n");
-      }
+      if (!IsDesktopWindow(windowUnderCursor)) {
+         if (isDragging && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+            // Continuously reposition the window while dragging and Ctrl is pressed
+            RepositionWindow();
+            //printf("Repositioning window...\n");
+         }
 
-      if (isResizing && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
-         ResizeWindow();
+         if (isResizing && (GetAsyncKeyState(VK_CONTROL) & 0x8000)) {
+            ResizeWindow();
+         }
       }
    }
 
