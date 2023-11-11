@@ -15,7 +15,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="WindowManagerExtension.cpp">
+    <ClCompile Include="WindowManagerExtension.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
